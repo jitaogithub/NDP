@@ -65,6 +65,11 @@ void FatTreeTopology::set_params(int no_of_nodes) {
 	     << " nodes\n";
 	exit(1);
     }
+    // NOTE 1: If no_of_nodes == 432 the NK == 72, NC ==36. There are 12 nodes 
+    // on each rack but I have no idea what it means by upper/lower pod. 
+    // Shouldn't aggregation layer need  2 * #racks switches?
+    // NOTE 2: It seems 6 nodes form a rack, and two racks form a pod.
+    // In addition to ToR switches, each pod has two upper-level switch.
     NK = (K*K/2);
     NC = (K*K/4);
     NSRV = (K*K*K/4);
