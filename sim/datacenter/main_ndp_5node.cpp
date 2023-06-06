@@ -41,7 +41,10 @@
 uint32_t RTT =
     1;  // this is per link delay in us; identical RTT microseconds = 0.02 ms
 int DEFAULT_NODES = 432;
-#define DEFAULT_QUEUE_SIZE 8
+
+// queuesize of 8 can go up to 100Gbps, or it will be much smaller than BDP
+// which can cause unfairness
+#define DEFAULT_QUEUE_SIZE 16
 
 FirstFit* ff = NULL;
 unsigned int subflow_count = 1;
@@ -81,6 +84,10 @@ struct Flow {
   string name;
   int src;
   int dst;
+  
+  // Runtime information
+  int src_id;
+  int sink_id;
 };
 
 int main(int argc, char** argv) {
@@ -88,7 +95,8 @@ int main(int argc, char** argv) {
   eventlist.setEndtime(timeFromSec(0.1));
   Clock c(timeFromSec(5 / 100.), eventlist);
   mem_b queuesize = memFromPkt(DEFAULT_QUEUE_SIZE);
-  int no_of_conns = 0, cwnd = 15, no_of_nodes = DEFAULT_NODES,
+  // cwnd of 15 can go up to 100 Gbps, or it will be smaller than BDP
+  int no_of_conns = 0, cwnd = 30, no_of_nodes = DEFAULT_NODES,
       flowsize = Packet::data_packet_size() * 50;
   stringstream filename(ios_base::out);
   RouteStrategy route_strategy = NOT_SET;
@@ -249,9 +257,9 @@ int main(int argc, char** argv) {
   };
 
   map<int, NdpPullPacer*> dst2pacer = {
-      {12, new NdpPullPacer(eventlist, 1 /*pull at line rate*/)},
-      {36, new NdpPullPacer(eventlist, 1 /*pull at line rate*/)},
-      {48, new NdpPullPacer(eventlist, 1 /*pull at line rate*/)},
+      {12, new NdpPullPacer(eventlist, 20 /*pull pacer base rate is 10 Gbps*/)},
+      {36, new NdpPullPacer(eventlist, 20)},
+      {48, new NdpPullPacer(eventlist, 20)},
   };
 
   for (int i = 0; i < flows.size(); i++) {
@@ -283,6 +291,9 @@ int main(int argc, char** argv) {
     sink->set_paths(rev_paths);
     src->set_traffic_logger(&traffic_logger);
     sinkLogger.monitorSink(sink);
+
+    flow->src_id = src->get_id();
+    flow->sink_id = sink->get_id();
   }
 
   // Record the setup
@@ -300,6 +311,7 @@ int main(int argc, char** argv) {
   }
 
   cout << "Done" << endl;
+  
 
   list<const Route*>::iterator rt_i;
   int counts[10];
@@ -336,6 +348,10 @@ int main(int argc, char** argv) {
   }
   for (int i = 0; i < 10; i++)
     cout << "Hop " << i << " Count " << counts[i] << endl;
+  
+  for (int i=0; i<flows.size(); i++) {
+    cout << flows[i].name << ": "  << flows[i].src_id << " " << flows[i].sink_id << endl;
+  }
 }
 
 string ntoa(double n) {
