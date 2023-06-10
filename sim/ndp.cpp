@@ -420,7 +420,7 @@ void NdpSrc::processAck(const NdpAck& ack) {
     assert(_flight_size>=0);
 
     if (cum_ackno >= _flow_size){
-	cout << "Flow " << nodename() << " finished at " << timeAsMs(eventlist().now()) << endl;
+	// cout << "Flow " << nodename() << " finished at " << timeAsMs(eventlist().now()) << endl;
     }
 
     update_rtx_time();
@@ -844,7 +844,7 @@ void NdpSrc::doNextEvent() {
 
 	retransmit_packet();
     } else {
-	cout << "Starting flow" << endl;
+	// cout << "Starting flow" << endl;
 	startflow();
     }
 }

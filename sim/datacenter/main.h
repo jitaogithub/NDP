@@ -3,8 +3,7 @@
 
 #include <string>
 
-
-#define HOST_NIC 10000 // host nic speed in Gbps
+#define HOST_NIC 200000 // host nic speed in Gbps
 #define CORE_TO_HOST 4
 
 //basic setup!
