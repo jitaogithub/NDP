@@ -13,9 +13,9 @@ import numpy as np
 from functools import partial
 
 VICTIM=int(sys.argv[1])
-FLOW_END_LOG  = "flow_end_log_100gbps_1ms"
-FLOW_META = "flow_meta_100gbps_1ms"
-RANGE = (1000000,4000000)
+FLOW_END_LOG  = "flow_end_log"
+FLOW_META = "flow_meta"
+RANGE = (0,4000000)
 
 flow_end_times = dict()
 flow_end_log = open(FLOW_END_LOG, "r")
@@ -73,6 +73,8 @@ for flow_type, flows in flows.items():
 # ax.set_ylim((0.55,1))
 # ax.set_yticks(YTICKS)
 # ax.set_yticklabels(YTICKSLABEL, fontsize=18)
+
+ax.set_yscale('log')
 
 ax.grid(True, axis='both')
 ax.set_xlabel("Elapsed time", fontsize=18)

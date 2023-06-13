@@ -24,7 +24,8 @@
 #include "topology.h"
 // #include "vl2_topology.h"
 
-#include "fat_tree_topology.h"
+// #include "fat_tree_topology.h"
+#include "fat_tree_3_to_1_oversubscribed.h"
 // #include "oversubscribed_fat_tree_topology.h"
 // #include "multihomed_fat_tree_topology.h"
 // #include "star_topology.h"
@@ -111,9 +112,11 @@ int main(int argc, char** argv) {
   stringstream filename(ios_base::out);
   RouteStrategy route_strategy = NOT_SET;
 
-  double ur_tput_gbps = 140;
+  double ur_tput_gbps = 60;
+  int ur_flowsize = 131072;
   double incast_interval_ms = 1;
   double incast_degree = 100;
+  int incast_flowsize = 131072;
 
   int i = 1;
   filename << "logout.dat";
@@ -223,6 +226,11 @@ int main(int argc, char** argv) {
                                              &eventlist, ff, COMPOSITE, 0);
 #endif
 
+#ifdef FAT_TREE_3_TO_1_OVERSUBSCRIBED
+  FatTree3to1Oversubscribed* top = new FatTree3to1Oversubscribed(
+      no_of_nodes, queuesize, &logfile, &eventlist, ff, COMPOSITE, 0);
+#endif
+
 #ifdef OV_FAT_TREE
   OversubscribedFatTreeTopology* top =
       new OversubscribedFatTreeTopology(&logfile, &eventlist, ff);
@@ -267,9 +275,10 @@ int main(int argc, char** argv) {
   vector<Flow*> flows;
   map<int, NdpPullPacer*> dst2pacer;
 
-  int flow_count[24][24];
-  for (int i = 0; i < 24; i++) {
-    for (int j = 0; j < 24; j++) {
+  int ** flow_count = new int*[432];
+  for (int i = 0; i < 432; i++) {
+    flow_count[i] = new int[432];
+    for (int j = 0; j < 432; j++) {
       flow_count[i][j] = 0;
     }
   }
@@ -277,12 +286,12 @@ int main(int argc, char** argv) {
   double end_time_ns = end_time * 1e9;
   // Uniform random
   // Left rack to right rack
-  double mean_gap_ns = flowsize * 8 / ur_tput_gbps;
+  double mean_gap_ns = ur_flowsize * 8 / ur_tput_gbps;
   // std::exponential_distribution<> rand_exp(1 / mean_gap_ns);
   for (int i = 0; i < 24; i++) {
     double cumulative_time_ns = 0;
     while (cumulative_time_ns < end_time_ns) {
-      int dst = 24 + rand() % 24;
+      int dst = 408 + rand() % 24;
       // double gap_ns = rand_exp(rand_gen);
       double gap_ns = rand_exp(1 / mean_gap_ns);
       cumulative_time_ns += gap_ns;
@@ -291,7 +300,7 @@ int main(int argc, char** argv) {
                    std::to_string(flow_count[i][dst]++);
       flow->src = i;
       flow->dst = dst;
-      flow->flowsize = flowsize;
+      flow->flowsize = ur_flowsize;
       flow->start_time_ns = cumulative_time_ns;
       flows.push_back(flow);
       // cout << flow->name << " " << flow->start_time_ns << endl;
@@ -299,7 +308,7 @@ int main(int argc, char** argv) {
     dst2pacer[i] = new NdpPullPacer(eventlist, 20);
   }
   // Right rack to left rack
-  for (int i = 24; i < 48; i++) {
+  for (int i = 408; i < 432; i++) {
     double cumulative_time_ns = 0;
     while (cumulative_time_ns < end_time_ns) {
       int dst = rand() % 24;
@@ -310,7 +319,7 @@ int main(int argc, char** argv) {
                    std::to_string(flow_count[i][dst]++);
       flow->src = i;
       flow->dst = dst;
-      flow->flowsize = flowsize;
+      flow->flowsize = ur_flowsize;
       flow->start_time_ns = cumulative_time_ns;
       flows.push_back(flow);
     }
@@ -323,14 +332,17 @@ int main(int argc, char** argv) {
   while (cumulative_time_ns < end_time_ns) {
     cumulative_time_ns += gap_ns;
     int dst = rand() % 48;
+    if (dst >=24 ) {
+      dst += 384;
+    }
     for (int i = 0; i < incast_degree; i++) {
       Flow* flow = new Flow();
-      int src = 48 + i * 3;
+      int src = 48 + i * 2;
       flow->name = "incast_" + std::to_string(src) + "_" + std::to_string(dst) +
                    "_" + std::to_string(incast_burst++);
       flow->src = src;
       flow->dst = dst;
-      flow->flowsize = flowsize;
+      flow->flowsize = incast_flowsize;
       flow->start_time_ns = cumulative_time_ns;
       flows.push_back(flow);
     }
@@ -430,8 +442,8 @@ int main(int argc, char** argv) {
     return 1;
   }
   for (int i = 0; i < flows.size(); i++) {
-    fprintf(fd, "%s,%d,%d,%.3lf\n", flows[i]->name.c_str(), flows[i]->src_id,
-            flows[i]->sink_id, flows[i]->start_time_ns);
+    fprintf(fd, "%s,%d,%d,%.3lf,%d\n", flows[i]->name.c_str(), flows[i]->src_id,
+            flows[i]->sink_id, flows[i]->start_time_ns, flows[i]->flowsize);
   }
   fclose(fd);
   return 0;
