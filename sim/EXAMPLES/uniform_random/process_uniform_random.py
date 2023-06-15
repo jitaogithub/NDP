@@ -11,7 +11,9 @@ for line in flow_end_log.readlines():
     last_end_time = time
   flow_end_times[flow_id] = time * 1e9
 
-flows = []
+flows = {
+  "ur" : [],
+}
 flow_meta = open("flow_meta", "r")
 for line in flow_meta.readlines():
   data = line.split(",")
@@ -20,36 +22,26 @@ for line in flow_meta.readlines():
   if flow_id not in flow_end_times:
     continue
   flow = {
-    "src": int(name[0]),
-    "dst": int(name[1]),
-    "repeat": int(name[2]),
+    "src": int(name[1]),
+    "dst": int(name[2]),
+    "repeat": int(name[3]),
     "id": flow_id,
     "start_time": float(data[3]),
     "end_time": flow_end_times[flow_id],
     "size": int(data[4])
   }
-  flows.append(flow)
+  flows[name[0]].append(flow)
 
 
-
-interested_pairs = [
-  {"src": 0, "dst": 36},
-  {"src": 72, "dst": 36},
-  {"src": 72, "dst": 108},
-  {"src": 72, "dst": 144},
-]
-
-
-for pair in interested_pairs:
-  fcts = []
+fcts = dict()
+for flow_type, flows in flows.items():
   flow_completion_times  = []
   completed_bytes = 0
+
   for flow in flows:
-    if flow["src"] != pair["src"] or flow["dst"] != pair["dst"]:
-      continue
     flow_completion_times.append(int(flow["end_time"] - flow["start_time"]))
     completed_bytes += flow["size"]
-  fcts = sorted(flow_completion_times)
-  goodput = completed_bytes * 8 / last_end_time / 1e9 
-  print(goodput, fcts[int(len(fcts) * 0.5)],fcts[int(len(fcts) * 0.99)], end=" ")
-print("")
+  fcts[flow_type] = sorted(flow_completion_times)
+  goodput = completed_bytes * 8 / last_end_time / (48 if flow_type == "ur" else 100) / 1e9 
+  print(flow_type,goodput, fcts[flow_type][int(len(fcts[flow_type]) * 0.5)],fcts[flow_type][int(len(fcts[flow_type]) * 0.99)] )
+
