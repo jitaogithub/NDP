@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import sys
+
 flow_end_times = dict()
-flow_end_log = open("flow_end_log", "r")
+flow_end_log = open(sys.argv[1], "r")
 last_end_time = 0
 for line in flow_end_log.readlines():
   data = line.split()
@@ -12,7 +14,7 @@ for line in flow_end_log.readlines():
   flow_end_times[flow_id] = time * 1e9
 
 flows = []
-flow_meta = open("flow_meta", "r")
+flow_meta = open(sys.argv[2], "r")
 for line in flow_meta.readlines():
   data = line.split(",")
   name = data[0].split("_")

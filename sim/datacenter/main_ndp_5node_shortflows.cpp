@@ -109,6 +109,7 @@ int main(int argc, char** argv) {
   int no_of_conns = 0, cwnd = 30, no_of_nodes = DEFAULT_NODES,
       flowsize = 524288;
   stringstream filename(ios_base::out);
+  std::string flow_meta = "flow_meta";
   RouteStrategy route_strategy = NOT_SET;
 
   double ur_tput_gbps = 160;
@@ -120,6 +121,9 @@ int main(int argc, char** argv) {
     if (!strcmp(argv[i], "-o")) {
       filename.str(std::string());
       filename << argv[i + 1];
+      i++;
+    } else if (!strcmp(argv[i], "-m")) {
+      flow_meta = argv[i + 1];
       i++;
     } else if (!strcmp(argv[i], "-sub")) {
       subflow_count = atoi(argv[i + 1]);
@@ -142,6 +146,7 @@ int main(int argc, char** argv) {
       i++;
     } else if (!strcmp(argv[i], "-q")) {
       queuesize = memFromPkt(atoi(argv[i + 1]));
+      cout << "queuesize " << queuesize << endl;
       i++;
     } else if (!strcmp(argv[i], "-strat")) {
       if (!strcmp(argv[i + 1], "perm")) {
@@ -265,6 +270,7 @@ int main(int argc, char** argv) {
 
   // used just to print out stats data at the end
   list<const Route*> routes;
+  list<const Route*> interested_routes;
 
   vector<Flow*> flows;
   map<int, NdpPullPacer*> dst2pacer;
@@ -333,6 +339,9 @@ int main(int argc, char** argv) {
     fwd_route->push_back(sink);
     for (unsigned int i = 0; i < fwd_paths->size(); i++) {
       routes.push_back((*fwd_paths)[i]);
+      if (flow->dst = 36) {
+        interested_routes.push_back((*fwd_paths)[i]);
+      }
     }
 
     vector<const Route*>* rev_paths = top->get_paths(flow->dst, flow->src);
@@ -368,8 +377,12 @@ int main(int argc, char** argv) {
 
   list<const Route*>::iterator rt_i;
   uint64_t counts[10];
+  uint64_t pkt_counts[10];
   int hop;
-  for (int i = 0; i < 10; i++) counts[i] = 0;
+  for (int i = 0; i < 10; i++) {
+    counts[i] = 0;
+    pkt_counts[i] = 0;
+  }
   for (rt_i = routes.begin(); rt_i != routes.end(); rt_i++) {
     const Route* r = (*rt_i);
     // print_route(*r);
@@ -392,6 +405,7 @@ int main(int argc, char** argv) {
              << "stripped" << endl;
 #endif
         counts[hop] += q->num_stripped();
+        pkt_counts[hop] += q->num_packets();
         hop++;
       }
     }
@@ -400,11 +414,12 @@ int main(int argc, char** argv) {
 #endif
   }
   for (int i = 0; i < 10; i++)
-    cout << "Hop " << i << " Count " << counts[i] << endl;
+    cout << "Hop " << i << " Pkt Count " << pkt_counts[i] << " Strip Count "
+         << counts[i] << endl;
 
-  FILE* fd = fopen("flow_meta", "w");
+  FILE* fd = fopen(flow_meta.c_str(), "w");
   if (!fd) {
-    cout << "Failed to write to flow_meta" << endl;
+    cout << "Failed to write to " << flow_meta << endl;
     return 1;
   }
   for (int i = 0; i < flows.size(); i++) {

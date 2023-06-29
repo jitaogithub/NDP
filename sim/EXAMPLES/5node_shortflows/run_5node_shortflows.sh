@@ -1,16 +1,24 @@
 #!/usr/bin/env bash
 
-LOADS=(140 160 170 180 190)
-FLOWSIZES=(65536 131072 262144 524288 1048576)
+LOADS=(160)
+# FLOWSIZES=(131072 262144 393216 524288 1048576)
+FLOWSIZES=(1048576)
+Q=64
+CWND=32
 
 for load in ${LOADS[@]} ; do
 for flowsize in ${FLOWSIZES[@]} ; do
-  (../../datacenter/htsim_ndp_5node_shortflows -strat perm -q 16 -cwnd 30 -load ${load} -flowsize ${flowsize} ;\
-  ../../parse_output logout.dat -ascii  | grep RCV | grep LASTDATA | grep FULL > flow_end_log_${load}_${flowsize}) &
+  (../../datacenter/htsim_ndp_5node_shortflows -strat perm -q ${Q} -cwnd ${CWND} -load ${load} -flowsize ${flowsize} -o logout_${load}_${flowsize} -m flow_meta_${load}_${flowsize};\
+  ../../parse_output logout_${load}_${flowsize} -ascii  | grep RCV | grep LASTDATA | grep FULL > flow_end_log_${load}_${flowsize}) &
 done
 done
 
 wait
 
-echo -n "${load} ${flowsize} " >> 5node_shortflows_out_${load}_${flowsize}
-./process_5node_shortflows.py >> 5node_shortflows_out_${load}_${flowsize}
+
+for load in ${LOADS[@]} ; do
+for flowsize in ${FLOWSIZES[@]} ; do
+echo -n "${load} ${flowsize} " >> 5node_shortflows_out_q${Q}_cwnd${CWND}
+./process_5node_shortflows.py flow_end_log_${load}_${flowsize} flow_meta_${load}_${flowsize} >> 5node_shortflows_out_q${Q}_cwnd${CWND}
+done
+done
